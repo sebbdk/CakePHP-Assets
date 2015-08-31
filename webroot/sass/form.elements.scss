@@ -17,8 +17,7 @@
 
 	.preview {
 		height: 100px;
-		width: 30%;
-		margin-right: 7%;
+		width: 100px;
 		float: left;
 
 		border-radius: 5px;
@@ -29,13 +28,17 @@
 		background-size: cover;
 
 		cursor: pointer;
+
+		&.has-file {
+			background-color: green;
+		}
 	}
 
 	input[type=file] {
 		float: left;
 		overflow: hidden;
 		height: 30px;
-		width: 60%;
+		margin-left: 2em;
 		margin-top: 35px;
 		outline: none;
 		cursor: pointer;

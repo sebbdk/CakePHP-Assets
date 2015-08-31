@@ -3,7 +3,7 @@
 * @Author: sebb
 * @Date:   2014-06-14 03:38:51
 * @Last Modified by:   sebb
-* @Last Modified time: 2014-07-22 01:48:48
+* @Last Modified time: 2014-07-04 18:41:27
 */
 App::uses('ModelBehavior', 'Model');
 App::uses('String', 'Utility');
@@ -17,7 +17,9 @@ class AssetFileBehavior extends ModelBehavior {
 		'image/jpeg' => 'jpg',
 		'image/png' => 'png',
 		'image/gif' => 'gif',
-		'text/plain' => 'txt'
+		'text/plain' => 'txt',
+
+		'application/pdf' => 'pdf'
 	];
 
 	public function __construct() {
@@ -25,24 +27,6 @@ class AssetFileBehavior extends ModelBehavior {
 
 		if(!file_exists($this->assetFolder)) {
 			mkdir($this->assetFolder);
-		}
-	}
-
-
-	public function download($model, $id) {
-		$media = $model->read(null, $id);
-		if(!empty($media) && strpos($media[$model->alias]['asset_file'], '://') !== false) {
-			$file = file_get_contents($media[$model->alias]['asset_file']);
-
-			$ext = explode('.', $media[$model->alias]['asset_file']);
-			$ext = array_pop($ext);
-			$name = String::uuid() . '.' . $ext;
-
-			$path = $this->assetFolder . DS . $name;
-			file_put_contents($path, $file);
-
-			$media[$model->alias]['asset_file'] = $name;
-			debug($model->save($media));
 		}
 	}
 
@@ -77,11 +61,25 @@ class AssetFileBehavior extends ModelBehavior {
  * @param  Array $options
  * @return void
  */
-	public function beforeValidate(Model $model, $options = []) {
+	public function beforeSave(Model $model, $options = []) {
 		foreach ($model->data[$model->alias] as $field => $value) {//for each result
 			if(strrpos($field, 'asset_') === 0) {//if it's a asset field
 
+				if(empty($value) || (is_array($value) && empty($value['name']))) {
+					unset($model->data[$model->alias]);
+					continue;
+				}
 
+				//handle file uploads
+				if(is_array($value)) {
+					$name = String::uuid() . '.' . $value["name"];
+					rename($value["tmp_name"], $this->assetFolder . DS . $name);
+
+					$model->data[$model->alias][$field] = $name;
+					continue;
+				}
+
+				//handle base64 uploads
 				if(strrpos($value, 'data:') === 0) {//if the asset field has byte64 data
 					$m = explode(':', $value);
 					$m = array_pop($m);
@@ -100,14 +98,13 @@ class AssetFileBehavior extends ModelBehavior {
 					}
 
 				}
-
 			}
-
 		}
+
+		return true;
 	}
 
 	public function ensureUploadsFolderExist() {
-		
 		if(!is_dir($this->assetFolder)) {
 			mkdir($this->assetFolder);
 		}
